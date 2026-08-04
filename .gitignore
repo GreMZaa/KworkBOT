@@ -1,0 +1,22 @@
+# Переменные окружения и секреты
+.env
+.env.local
+
+# База данных
+orders.db
+
+# Кэш Python и виртуальное окружение
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# Настройки IDE
+.vscode/
+.idea/
+
+# Сборка Vercel
+.vercel/
