@@ -14,7 +14,7 @@ TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "").strip()
 
 # LLM Настройки (Cohere API)
 COHERE_API_KEY: str = os.getenv("COHERE_API_KEY", "").strip()
-COHERE_MODEL: str = os.getenv("COHERE_MODEL", "command-r-plus").strip()
+COHERE_MODEL: str = os.getenv("COHERE_MODEL", "command-r-08-2024").strip()
 
 # Фильтрация и планировщик
 MY_SKILLS: str = os.getenv("MY_SKILLS", "Python, веб-разработка").strip()
@@ -38,10 +38,12 @@ EXCHANGES: list = []
 try:
     from exchanges.kwork import KworkExchange
     from exchanges.yandex_uslugi import YandexUslugiExchange
+    from exchanges.fl_ru import FLExchange
 
     EXCHANGES = [
         KworkExchange(),
         YandexUslugiExchange(),
+        FLExchange(),
     ]
 except Exception:
     pass
