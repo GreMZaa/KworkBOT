@@ -32,8 +32,8 @@ class FLExchange(Exchange):
                     logger.error(f"FL.ru вернул статус {response.status}")
                     return orders
 
-                html = await response.text()
-                soup = BeautifulSoup(html, "html.parser")
+                html_text = await response.text()
+                soup = BeautifulSoup(html_text, "html.parser")
 
                 cards = soup.select(".b-post, div[id*='project-item'], div[class*='b-post']")
                 logger.info(f"Найдено проектов на FL.ru: {len(cards)}")
@@ -45,11 +45,16 @@ class FLExchange(Exchange):
                             continue
 
                         title = title_elem.get_text(strip=True)
-                        raw_href = title_elem.get("href", "")
+                        raw_href = title_elem.get("href", "").strip()
                         if not raw_href:
                             continue
 
-                        url = raw_href if raw_href.startswith("http") else f"{self.base_url}{raw_href}"
+                        if raw_href.startswith("http://") or raw_href.startswith("https://"):
+                            url = raw_href
+                        else:
+                            if not raw_href.startswith("/"):
+                                raw_href = "/" + raw_href
+                            url = f"{self.base_url}{raw_href}"
 
                         desc_elem = card.select_one(".b-post__txt, div[class*='text']")
                         description = desc_elem.get_text(strip=True) if desc_elem else title

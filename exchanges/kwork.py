@@ -51,11 +51,17 @@ class KworkExchange(Exchange):
                             continue
 
                         title = title_elem.get_text(strip=True)
-                        raw_href = title_elem.get("href", "")
+                        raw_href = title_elem.get("href", "").strip()
                         if not raw_href:
                             continue
 
-                        url = raw_href if raw_href.startswith("http") else f"{self.base_url}{raw_href}"
+                        # Исправление формирования корректного URL со слэшем
+                        if raw_href.startswith("http://") or raw_href.startswith("https://"):
+                            url = raw_href
+                        else:
+                            if not raw_href.startswith("/"):
+                                raw_href = "/" + raw_href
+                            url = f"{self.base_url}{raw_href}"
 
                         # Описание
                         desc_elem = card.select_one(".wants-card__description-text, .wants-card__text, div[class*='description']")
