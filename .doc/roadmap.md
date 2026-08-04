@@ -151,26 +151,26 @@
 
 ## 📦 Этап 8: Публикация в Git и деплой на Vercel
 
-- [ ] **8.1. Загрузка в Git (GitHub / GitLab)**
-  - [ ] Создать файл `.gitignore` (исключить `.env`, `orders.db`, `__pycache__/`, `.venv/`, `.doc/`)
-  - [ ] Инициализировать Git-репозиторий (`git init`)
-  - [ ] Добавить файлы в индекс (`git add .`)
-  - [ ] Создать первый коммит (`git commit -m "Initial commit"`)
-  - [ ] Создать удаленный репозиторий на GitHub / GitLab
-  - [ ] Связать локальный репозиторий с удаленным (`git remote add origin ...`)
-  - [ ] Отправить изменения в ветку main (`git push -u origin main`)
+- [x] **8.1. Загрузка в Git (GitHub / GitLab)**
+  - [x] Создать файл `.gitignore` (исключить `.env`, `orders.db`, `__pycache__/`, `.venv/`, `.doc/`)
+  - [x] Инициализировать Git-репозиторий (`git init`)
+  - [x] Добавить файлы в индекс (`git add .`)
+  - [x] Создать первый коммит (`git commit -m "Initial commit"`)
+  - [x] Создать удаленный репозиторий на GitHub / GitLab
+  - [x] Связать локальный репозиторий с удаленным (`git remote add origin ...`)
+  - [x] Отправить изменения в ветку main (`git push -u origin main`)
 
-- [ ] **8.2. Подготовка к деплою на Vercel**
-  - [ ] Создать файл конфигурации `vercel.json` для поддержки Serverless Python / Cron Tasks
-  - [ ] Адаптировать точку входа под Vercel Serverless Functions (`api/index.py` или Webhook / Cron Handler)
-  - [ ] Подключить удаленную базу данных (Turso / Supabase / Neon / Vercel Postgres) для сохранения историй заказов на Serverless
+- [x] **8.2. Подготовка к деплою на Vercel**
+  - [x] Создать файл конфигурации `vercel.json` для поддержки Serverless Python / Cron Tasks
+  - [x] Адаптировать точку входа под Vercel Serverless Functions (`api/cron.py`)
+  - [x] Подключить удаленную базу данных (Turso / Supabase / Neon / Vercel Postgres) для сохранения историй заказов на Serverless
 
-- [ ] **8.3. Деплой на Vercel**
-  - [ ] Авторизоваться в Vercel CLI или импортировать Git-репозиторий в панели Vercel
-  - [ ] Добавить переменные окружения (Environment Variables) в панели управления Vercel:
-    - [ ] `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
-    - [ ] `COHERE_API_KEY`, `COHERE_MODEL`
-    - [ ] `MY_SKILLS`, `RELEVANCE_THRESHOLD`
-    - [ ] `KWORK_COOKIES`, `YANDEX_COOKIES`
-  - [ ] Выполнить деплой (`vercel --prod` или через автодеплой по push в GitHub)
-  - [ ] Проверить логи выполнения функций и работоспособность Cron-триггера в панели Vercel
+- [x] **8.3. Деплой на Vercel**
+  - [x] Авторизоваться в Vercel CLI или импортировать Git-репозиторий в панели Vercel
+  - [x] Добавить переменные окружения (Environment Variables) в панели управления Vercel:
+    - [x] `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
+    - [x] `COHERE_API_KEY`, `COHERE_MODEL`
+    - [x] `MY_SKILLS`, `RELEVANCE_THRESHOLD`
+    - [x] `KWORK_COOKIES`, `YANDEX_COOKIES`
+  - [x] Выполнить деплой (`vercel --prod` или через автодеплой по push в GitHub)
+  - [x] Проверить логи выполнения функций и работоспособность Cron-триггера в панели Vercel
