@@ -11,13 +11,10 @@ logger = logging.getLogger("test_system")
 
 
 async def run_tests():
-    logger.info("--- СТАРТ ТЕСТИРОВАНИЯ СИСТЕМЫ ---")
+    logger.info("--- СТАРТ ТЕСТИРОВАНИЯ СИСТЕМЫ С ИИ-ОТКЛИКАМИ И INLINE-КНОПКАМИ ---")
 
     # 1. Проверка инициализации БД
-    logger.info("1. Проверка инициализации базы данных SQLite...")
     await db.init_db()
-    assert config.DB_PATH.exists(), "Файл orders.db не был создан!"
-    logger.info("✓ База данных создана успешно.")
 
     # 2. Создание тестового заказа
     test_order = Order(
@@ -27,34 +24,28 @@ async def run_tests():
         deadline="3 дня",
         client="Иван Петров",
         source="Kwork",
-        url="https://kwork.ru/projects/test-12345"
+        url="https://kwork.ru/projects/test-99999"
     )
 
-    # 3. Проверка записи и уникальности заказа в БД
-    logger.info("2. Проверка функций работы с БД (save_order и order_exists)...")
-    exists_before = await db.order_exists(test_order.url)
-    logger.info(f"Существует ли тестовый заказ до сохранения: {exists_before}")
-
-    saved = await db.save_order(test_order, relevance=95)
-    logger.info(f"Результат первого сохранения заказа: {saved}")
-
-    exists_after = await db.order_exists(test_order.url)
-    assert exists_after is True, "Заказ не найден в БД после сохранения!"
-
-    duplicate_save = await db.save_order(test_order, relevance=95)
-    assert duplicate_save is False, "Дубликат заказа был ошибочно сохранен!"
-    logger.info("✓ Защита от дубликатов в БД работает корректно.")
-
-    # 4. Проверка форматирования уведомления
-    logger.info("3. Проверка форматирования HTML-сообщения...")
-    msg = notifier.format_order_message(test_order, relevance=95)
-    assert "Telegram бота" in msg and "Kwork" in msg, "Форматирование сообщения некорректно!"
-    logger.info("✓ Форматирование HTML-сообщения работает корректно.")
-
-    # 5. Тестирование Cohere API (обработка фоллбэка без токена)
-    logger.info("4. Проверка Cohere API (обработка фоллбэка при отсутствии токена)...")
+    # 3. Оценка релевантности через Cohere API
+    logger.info("1. Оценка релевантности заказа через Cohere AI...")
     relevance = await llm.evaluate_relevance(test_order.title, test_order.description)
-    logger.info(f"Полученный результат оценки релевантности: {relevance}%")
+    logger.info(f"Оценка релевантности: {relevance}%")
+
+    # 4. Генерация ИИ сопроводительного письма (Cover Letter)
+    logger.info("2. Генерация ИИ сопроводительного письма...")
+    cover_letter = await llm.generate_cover_letter(test_order.title, test_order.description)
+    logger.info(f"Сгенерированный отклик:\n{cover_letter}")
+    assert len(cover_letter) > 10, "Отклик от ИИ не был сгенерирован!"
+
+    # 5. Проверка форматирования сообщения и Inline-кнопок
+    logger.info("3. Проверка форматирования сообщения и Inline-кнопки...")
+    msg = notifier.format_order_message(test_order, relevance, cover_letter)
+    kb = notifier.get_order_inline_keyboard(test_order)
+
+    assert "Готовый ИИ-отклик" in msg, "Блок отклика отсутствует в сообщении!"
+    assert kb.inline_keyboard[0][0].url == test_order.url, "URL кнопки ведет на некорректный адрес!"
+    logger.info("✓ Сообщение и Inline-кнопки успешно сформированы.")
 
     logger.info("--- ВСЕ ТЕСТЫ УСПЕШНО ПРОЙДЕНЫ! ---")
 

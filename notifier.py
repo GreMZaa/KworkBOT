@@ -2,6 +2,7 @@ import logging
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from exchanges.base import Order
 import config
 
@@ -25,12 +26,13 @@ def get_bot() -> Bot | None:
     return _bot_instance
 
 
-def format_order_message(order: Order, relevance: int) -> str:
+def format_order_message(order: Order, relevance: int, cover_letter: str = "") -> str:
     """
-    Форматирует информацию о заказе в HTML-сообщение для Telegram.
+    Форматирует информацию о заказе и готовую запись отклика для Telegram.
 
     :param order: Объект Order
     :param relevance: Процент релевантности (0–100)
+    :param cover_letter: Сгенерированный текст отклика от ИИ
     :return: Отформатированная HTML-строка
     """
     message = (
@@ -40,18 +42,38 @@ def format_order_message(order: Order, relevance: int) -> str:
         f"💰 <b>Бюджет:</b> {order.price or 'Не указан'}\n"
         f"⏱ <b>Срок:</b> {order.deadline or 'Не указан'}\n"
         f"👤 <b>Заказчик:</b> {order.client or 'Не указан'}\n\n"
-        f"📄 <b>Описание:</b>\n<i>{order.description[:500]}{'...' if len(order.description) > 500 else ''}</i>\n\n"
-        f"🔗 <a href='{order.url}'>Открыть заказ на бирже</a>"
+        f"📄 <b>Описание:</b>\n<i>{order.description[:400]}{'...' if len(order.description) > 400 else ''}</i>\n"
     )
+
+    if cover_letter:
+        message += (
+            f"\n🤖 <b>Готовый ИИ-отклик (нажмите чтобы скопировать):</b>\n"
+            f"<code>{cover_letter}</code>\n"
+        )
+
     return message
 
 
-async def send_order_notification(order: Order, relevance: int) -> bool:
+def get_order_inline_keyboard(order: Order) -> InlineKeyboardMarkup:
     """
-    Отправляет уведомление о заказе в Telegram-чат.
+    Создает Inline-кнопку для быстрого перехода на страницу заказа.
+    """
+    button_text = f"🚀 Откликнуться на {order.source}"
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=button_text, url=order.url)]
+        ]
+    )
+    return keyboard
+
+
+async def send_order_notification(order: Order, relevance: int, cover_letter: str = "") -> bool:
+    """
+    Отправляет уведомление о заказе с кнопкой быстрого отклика в Telegram.
 
     :param order: Объект Order
     :param relevance: Процент релевантности (0–100)
+    :param cover_letter: Текст сопроводительного письма от ИИ
     :return: True при успешной отправке, иначе False
     """
     bot = get_bot()
@@ -63,12 +85,14 @@ async def send_order_notification(order: Order, relevance: int) -> bool:
         logger.warning("TELEGRAM_CHAT_ID не задан. Уведомление не отправлено.")
         return False
 
-    text = format_order_message(order, relevance)
+    text = format_order_message(order, relevance, cover_letter)
+    reply_markup = get_order_inline_keyboard(order)
 
     try:
         await bot.send_message(
             chat_id=config.TELEGRAM_CHAT_ID,
             text=text,
+            reply_markup=reply_markup,
             disable_web_page_preview=False
         )
         logger.info(f"Уведомление о заказе '{order.title}' успешно отправлено в Telegram.")

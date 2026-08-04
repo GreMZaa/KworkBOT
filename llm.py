@@ -51,7 +51,6 @@ async def evaluate_relevance(order_title: str, order_description: str) -> int:
             async with session.post(url, headers=headers, json=payload, timeout=15) as response:
                 if response.status == 200:
                     data = await response.json()
-                    # В Cohere API v2 ответ содержится в message.content[0].text
                     content = ""
                     if "message" in data and "content" in data["message"]:
                         for block in data["message"]["content"]:
@@ -60,7 +59,6 @@ async def evaluate_relevance(order_title: str, order_description: str) -> int:
                     elif "text" in data:
                         content = data["text"]
 
-                    # Извлекаем число от 0 до 100 из ответа
                     match = re.search(r'\b(100|[1-9]?\d)\b', content.strip())
                     if match:
                         score = int(match.group(1))
@@ -76,3 +74,65 @@ async def evaluate_relevance(order_title: str, order_description: str) -> int:
     except Exception as e:
         logger.error(f"Исключение при вызове Cohere API: {e}")
         return 0
+
+
+async def generate_cover_letter(order_title: str, order_description: str) -> str:
+    """
+    Генерирует продающее сопроводительное письмо (Cover Letter) для заказа на основе навыков фрилансера.
+
+    :param order_title: Название заказа
+    :param order_description: Описание заказа
+    :return: Текст отклика
+    """
+    if not config.COHERE_API_KEY:
+        return "Здравствуйте! Готов качественно и в срок выполнить ваш заказ. Занимаюсь разработкой на Python, веб-сервисов и ботов. Обращайтесь!"
+
+    skills = config.MY_SKILLS
+    prompt = f"""Ты — профессиональный фрилансер. Напиши короткий, убедительный и вежливый отклик (сопроводительное письмо) заказчику на проект.
+
+Мои навыки: {skills}
+
+Заказ:
+Заголовок: {order_title}
+Описание: {order_description}
+
+Требования к отклику:
+1. Максимально емкий (2-4 предложения).
+2. Покажи понимание задачи и подчеркни релевантный опыт.
+3. Без воды, клише и здоровайся уважительно.
+4. Напиши отклик на русском языке."""
+
+    url = "https://api.cohere.com/v2/chat"
+    headers = {
+        "Authorization": f"Bearer {config.COHERE_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": config.COHERE_MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    }
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=payload, timeout=15) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    content = ""
+                    if "message" in data and "content" in data["message"]:
+                        for block in data["message"]["content"]:
+                            if block.get("type") == "text":
+                                content += block.get("text", "")
+                    elif "text" in data:
+                        content = data["text"]
+
+                    return content.strip()
+                else:
+                    return "Здравствуйте! Ознакомился с вашим заданием. Имею большой опыт разработки на Python и готов выполнить проект в сжатые сроки."
+    except Exception as e:
+        logger.error(f"Ошибка при генерации отклика: {e}")
+        return "Здравствуйте! Готов взяться за реализацию вашего проекта. Опыт в разработке аналогичных решений имеется. Давайте обсудим детали!"

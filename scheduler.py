@@ -31,10 +31,11 @@ async def poll_exchanges_once(session: aiohttp.ClientSession):
                 # 3. Сохраняем заказ в базу данных
                 await db.save_order(order, relevance)
 
-                # 4. Если релевантность совпадает или превышает порог — отправляем уведомление в Telegram
+                # 4. Если релевантность соответствует порогу — генерируем ИИ-отклик и отправляем в Telegram
                 if relevance >= config.RELEVANCE_THRESHOLD:
-                    logger.info(f"Заказ '{order.title}' подходить под порог ({relevance}% >= {config.RELEVANCE_THRESHOLD}%). Отправка уведомления.")
-                    await notifier.send_order_notification(order, relevance)
+                    logger.info(f"Заказ '{order.title}' подходить под порог ({relevance}% >= {config.RELEVANCE_THRESHOLD}%). Генерация ИИ-отклика...")
+                    cover_letter = await llm.generate_cover_letter(order.title, order.description)
+                    await notifier.send_order_notification(order, relevance, cover_letter)
 
         except Exception as e:
             logger.error(f"Ошибка при обработке биржи {exchange.name}: {e}", exc_info=True)
