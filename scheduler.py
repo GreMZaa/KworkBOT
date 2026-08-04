@@ -14,6 +14,17 @@ async def poll_exchanges_once(session: aiohttp.ClientSession):
     Выполняет один цикл опроса всех зарегистрированных фриланс-бирж.
     """
     logger.info("Начало цикла опроса бирж...")
+    
+    # 0. Инициализация БД для поддержки таблиц настроек
+    await db.init_db()
+
+    # Получаем динамические пороги релевантности и навыки если переопределены
+    db_threshold = await db.get_setting("RELEVANCE_THRESHOLD", str(config.RELEVANCE_THRESHOLD))
+    try:
+        active_threshold = int(db_threshold)
+    except ValueError:
+        active_threshold = config.RELEVANCE_THRESHOLD
+
     for exchange in config.EXCHANGES:
         try:
             logger.info(f"Опрос биржи {exchange.name}...")
@@ -28,14 +39,23 @@ async def poll_exchanges_once(session: aiohttp.ClientSession):
                 # 2. Оцениваем релевантность заказа через Cohere API
                 relevance = await llm.evaluate_relevance(order.title, order.description)
 
-                # 3. Сохраняем заказ в базу данных
+                # 3. Проверяем на мошенничество / скам
+                is_scam, scam_reason = llm.check_is_scam(order.title, order.description)
+
+                # 4. Сохраняем заказ в базу данных
                 await db.save_order(order, relevance)
 
-                # 4. Если релевантность соответствует порогу — генерируем ИИ-отклик и отправляем в Telegram
-                if relevance >= config.RELEVANCE_THRESHOLD:
-                    logger.info(f"Заказ '{order.title}' подходить под порог ({relevance}% >= {config.RELEVANCE_THRESHOLD}%). Генерация ИИ-отклика...")
+                # 5. Если релевантность соответствует порогу — генерируем ИИ-отклик и отправляем в Telegram
+                if relevance >= active_threshold:
+                    logger.info(f"Заказ '{order.title}' соответствует порогу ({relevance}% >= {active_threshold}%).")
                     cover_letter = await llm.generate_cover_letter(order.title, order.description)
-                    await notifier.send_order_notification(order, relevance, cover_letter)
+                    await notifier.send_order_notification(
+                        order,
+                        relevance,
+                        cover_letter=cover_letter,
+                        is_scam=is_scam,
+                        scam_reason=scam_reason
+                    )
 
         except Exception as e:
             logger.error(f"Ошибка при обработке биржи {exchange.name}: {e}", exc_info=True)

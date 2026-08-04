@@ -5,14 +5,47 @@ import config
 
 logger = logging.getLogger(__name__)
 
+# Ключевые фразы мошенников и подозрительных схем
+SCAM_KEYWORDS = [
+    "залоговый взнос",
+    "страховой взнос",
+    "оплата за материалы",
+    "напишите в телеграм",
+    "пишите в телеграм",
+    "напишите в тг",
+    "пишите в тг",
+    "пишите в tg",
+    "напишите в tg",
+    "контакт в тг",
+    "контакт в телеграм",
+    "перевод за пределы биржи",
+    "бесплатное тестовое на",
+    "залог перед работой",
+    "оплата страхового взноса"
+]
+
+
+def check_is_scam(order_title: str, order_description: str) -> tuple[bool, str]:
+    """
+    Проверяет заказ на признаки мошенничества (скама).
+
+    :param order_title: Название заказа
+    :param order_description: Описание заказа
+    :return: Кортеж (is_scam: bool, reason: str)
+    """
+    text_to_check = f"{order_title} {order_description}".lower()
+
+    for kw in SCAM_KEYWORDS:
+        if kw in text_to_check:
+            logger.warning(f"Обнаружен подозрительный элемент мошенничества: '{kw}'")
+            return True, f"Обнаружена подозрительная фраза: '{kw}'"
+
+    return False, ""
+
 
 async def evaluate_relevance(order_title: str, order_description: str) -> int:
     """
     Оценивает релевантность заказа навыкам пользователя с помощью Cohere API.
-
-    :param order_title: Название заказа
-    :param order_description: Описание заказа
-    :return: Процент релевантности (0–100)
     """
     if not config.COHERE_API_KEY:
         logger.warning("COHERE_API_KEY не установлен в .env. Возвращается 0%.")
@@ -79,10 +112,6 @@ async def evaluate_relevance(order_title: str, order_description: str) -> int:
 async def generate_cover_letter(order_title: str, order_description: str) -> str:
     """
     Генерирует продающее сопроводительное письмо (Cover Letter) для заказа на основе навыков фрилансера.
-
-    :param order_title: Название заказа
-    :param order_description: Описание заказа
-    :return: Текст отклика
     """
     if not config.COHERE_API_KEY:
         return "Здравствуйте! Готов качественно и в срок выполнить ваш заказ. Занимаюсь разработкой на Python, веб-сервисов и ботов. Обращайтесь!"

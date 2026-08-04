@@ -27,14 +27,9 @@ def get_bot() -> Bot | None:
     return _bot_instance
 
 
-def format_order_message(order: Order, relevance: int, cover_letter: str = "") -> str:
+def format_order_message(order: Order, relevance: int, cover_letter: str = "", is_scam: bool = False, scam_reason: str = "") -> str:
     """
-    Форматирует информацию о заказе и готовую запись отклика для Telegram с экранированием HTML.
-
-    :param order: Объект Order
-    :param relevance: Процент релевантности (0–100)
-    :param cover_letter: Сгенерированный текст отклика от ИИ
-    :return: Отформатированная HTML-строка
+    Форматирует информацию о заказе, предупреждение антискам и ИИ-отклик для Telegram.
     """
     safe_title = html.escape(order.title)
     safe_url = html.escape(order.url)
@@ -46,7 +41,12 @@ def format_order_message(order: Order, relevance: int, cover_letter: str = "") -
     desc_raw = order.description[:400] + ("..." if len(order.description) > 400 else "")
     safe_description = html.escape(desc_raw)
 
+    scam_header = ""
+    if is_scam:
+        scam_header = f"⚠️ <b>ВНИМАНИЕ: ВОЗМОЖЕН СКАМ / МОШЕННИЧЕСТВО!</b>\n<i>({html.escape(scam_reason)})</i>\n\n"
+
     message = (
+        f"{scam_header}"
         f"🎯 <b>Новый релевантный заказ! ({relevance}%)</b>\n\n"
         f"📌 <b>Источник:</b> {safe_source}\n"
         f"📝 <b>Заголовок:</b> <a href='{safe_url}'>{safe_title}</a>\n"
@@ -80,14 +80,9 @@ def get_order_inline_keyboard(order: Order) -> InlineKeyboardMarkup:
     return keyboard
 
 
-async def send_order_notification(order: Order, relevance: int, cover_letter: str = "") -> bool:
+async def send_order_notification(order: Order, relevance: int, cover_letter: str = "", is_scam: bool = False, scam_reason: str = "") -> bool:
     """
-    Отправляет уведомление о заказе с кнопкой быстрого отклика в Telegram.
-
-    :param order: Объект Order
-    :param relevance: Процент релевантности (0–100)
-    :param cover_letter: Текст сопроводительного письма от ИИ
-    :return: True при успешной отправке, иначе False
+    Отправляет уведомление о заказе в Telegram.
     """
     bot = get_bot()
     if not bot:
@@ -98,7 +93,7 @@ async def send_order_notification(order: Order, relevance: int, cover_letter: st
         logger.warning("TELEGRAM_CHAT_ID не задан. Уведомление не отправлено.")
         return False
 
-    text = format_order_message(order, relevance, cover_letter)
+    text = format_order_message(order, relevance, cover_letter, is_scam, scam_reason)
     reply_markup = get_order_inline_keyboard(order)
 
     try:
