@@ -11,7 +11,7 @@ from aiogram import Dispatcher
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 import config
-from notifier import bot
+from notifier import get_bot
 
 dp = Dispatcher()
 
@@ -39,6 +39,7 @@ class handler(BaseHTTPRequestHandler):
         post_data = self.rfile.read(content_length)
 
         async def process_update():
+            bot = get_bot()
             if bot and post_data:
                 data = json.loads(post_data.decode('utf-8'))
                 update = Update.model_validate(data, context={"bot": bot})

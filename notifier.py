@@ -7,13 +7,22 @@ import config
 
 logger = logging.getLogger(__name__)
 
-# Инициализация экземпляра бота (если задан токен)
-bot: Bot | None = None
-if config.TELEGRAM_BOT_TOKEN:
-    bot = Bot(
-        token=config.TELEGRAM_BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
+_bot_instance: Bot | None = None
+
+
+def get_bot() -> Bot | None:
+    """Ленивая инициализация экземпляра aiogram.Bot при вызове."""
+    global _bot_instance
+    if _bot_instance is None and config.TELEGRAM_BOT_TOKEN:
+        try:
+            _bot_instance = Bot(
+                token=config.TELEGRAM_BOT_TOKEN,
+                default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+            )
+        except Exception as e:
+            logger.error(f"Ошибка инициализации Bot: {e}")
+            _bot_instance = None
+    return _bot_instance
 
 
 def format_order_message(order: Order, relevance: int) -> str:
@@ -45,16 +54,10 @@ async def send_order_notification(order: Order, relevance: int) -> bool:
     :param relevance: Процент релевантности (0–100)
     :return: True при успешной отправке, иначе False
     """
-    global bot
+    bot = get_bot()
     if not bot:
-        if config.TELEGRAM_BOT_TOKEN:
-            bot = Bot(
-                token=config.TELEGRAM_BOT_TOKEN,
-                default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-            )
-        else:
-            logger.warning("TELEGRAM_BOT_TOKEN не задан. Уведомление не отправлено.")
-            return False
+        logger.warning("TELEGRAM_BOT_TOKEN не задан или Bot не инициализирован.")
+        return False
 
     if not config.TELEGRAM_CHAT_ID:
         logger.warning("TELEGRAM_CHAT_ID не задан. Уведомление не отправлено.")

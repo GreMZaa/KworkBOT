@@ -7,7 +7,7 @@ from aiogram.types import Message
 import config
 import db
 import scheduler
-from notifier import bot
+from notifier import get_bot
 
 # Настройка логирования
 logging.basicConfig(
@@ -30,6 +30,7 @@ async def main():
     scheduler_task = asyncio.create_task(scheduler.start_scheduler())
 
     # 3. Запуск Telegram бота (если задан TELEGRAM_BOT_TOKEN)
+    bot = get_bot()
     if bot:
         dp = Dispatcher()
 
