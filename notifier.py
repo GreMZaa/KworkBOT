@@ -27,17 +27,25 @@ def get_bot() -> Bot | None:
     return _bot_instance
 
 
+def get_clean_redirect_url(url: str) -> str:
+    """
+    Очищает URL от Referer-заголовка Telegram через анонимайзер href.li, 
+    чтобы обходить блокировки 403 Cloudflare на FL.ru и Kwork.
+    """
+    clean_url = url.strip()
+    if clean_url.startswith("https://href.li/?"):
+        return clean_url
+    return f"https://href.li/?{clean_url}"
+
+
 def format_order_message(order: Order, relevance: int, deep_analysis: dict = None, is_scam: bool = False, scam_reason: str = "") -> str:
     """
-    Форматирует расширенную информацию о заказе:
-    - Бюджет клиента vs Реальная рыночная цена
-    - Оценка сложности и время разработки
-    - ИИ-советы к переговорам
-    - ИИ-отклик для копирования в 1 клик
-    - Авто-хештеги
+    Форматирует расширенную информацию о заказе с защитой от 403 Cloudflare.
     """
     safe_title = html.escape(order.title)
-    safe_url = html.escape(order.url)
+    raw_url = order.url.strip()
+    bypass_url = get_clean_redirect_url(raw_url)
+    
     safe_source = html.escape(order.source)
     safe_price = html.escape(order.price or "Не указан")
     safe_deadline = html.escape(order.deadline or "Не указан")
@@ -56,14 +64,14 @@ def format_order_message(order: Order, relevance: int, deep_analysis: dict = Non
     estimated_time = html.escape(deep_analysis.get("estimated_time", "2-4 часа") if deep_analysis else "2-4 часа")
     tech_stack = html.escape(deep_analysis.get("tech_stack", "Python") if deep_analysis else "Python")
     ai_tip = html.escape(deep_analysis.get("ai_tip", "") if deep_analysis else "")
-    hashtags = html.escape(deep_analysis.get("hashtags", "#python #kwork") if deep_analysis else "#python #kwork")
+    hashtags = html.escape(deep_analysis.get("hashtags", "#python #freelance") if deep_analysis else "#python #freelance")
     cover_letter = deep_analysis.get("cover_letter", "") if deep_analysis else ""
 
     message = (
         f"{scam_header}"
         f"🎯 <b>Новый релевантный заказ! ({relevance}%)</b>\n\n"
         f"📌 <b>Источник:</b> {safe_source}\n"
-        f"📝 <b>Заголовок:</b> <a href='{safe_url}'>{safe_title}</a>\n"
+        f"📝 <b>Заголовок:</b> <a href='{bypass_url}'>{safe_title}</a>\n"
         f"💰 <b>Бюджет клиента:</b> {safe_price}\n"
         f"💵 <b>Реальная рыночная цена:</b> <b>{market_price}</b> 💎\n"
         f"⏱ <b>Срок заказчика:</b> {safe_deadline}\n"
@@ -89,7 +97,8 @@ def format_order_message(order: Order, relevance: int, deep_analysis: dict = Non
         )
 
     message += (
-        f"\n🔗 <b>Прямая ссылка:</b> {safe_url}\n\n"
+        f"\n🔗 <b>Прямая ссылка (без 403):</b>\n{bypass_url}\n\n"
+        f"📋 <b>Ссылка для копирования:</b>\n<code>{html.escape(raw_url)}</code>\n\n"
         f"{hashtags}"
     )
 
@@ -98,13 +107,13 @@ def format_order_message(order: Order, relevance: int, deep_analysis: dict = Non
 
 def get_order_inline_keyboard(order: Order) -> InlineKeyboardMarkup:
     """
-    Создает Inline-кнопку с чистым валидным URL для быстрого перехода на страницу заказа.
+    Создает Inline-кнопку с обходом реферера Telegram (href.li) для гарантированного открытия без 403.
     """
-    clean_url = order.url.strip()
+    bypass_url = get_clean_redirect_url(order.url)
     button_text = f"🚀 Откликнуться на {order.source}"
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=button_text, url=clean_url)]
+            [InlineKeyboardButton(text=button_text, url=bypass_url)]
         ]
     )
     return keyboard
@@ -112,7 +121,7 @@ def get_order_inline_keyboard(order: Order) -> InlineKeyboardMarkup:
 
 async def send_order_notification(order: Order, relevance: int, cover_letter: str = "", is_scam: bool = False, scam_reason: str = "", deep_analysis: dict = None) -> bool:
     """
-    Отправляет уведомление о заказе в Telegram с расширенной ИИ-аналитикой.
+    Отправляет уведомление о заказе в Telegram.
     """
     bot = get_bot()
     if not bot:
