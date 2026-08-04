@@ -45,16 +45,17 @@ async def poll_exchanges_once(session: aiohttp.ClientSession):
                 # 4. Сохраняем заказ в базу данных
                 await db.save_order(order, relevance)
 
-                # 5. Если релевантность соответствует порогу — генерируем ИИ-отклик и отправляем в Telegram
+                # 5. Если релевантность соответствует порогу — выполняем глубокий ИИ-анализ и отправляем в Telegram
                 if relevance >= active_threshold:
-                    logger.info(f"Заказ '{order.title}' соответствует порогу ({relevance}% >= {active_threshold}%).")
-                    cover_letter = await llm.generate_cover_letter(order.title, order.description)
+                    logger.info(f"Заказ '{order.title}' соответствует порогу ({relevance}% >= {active_threshold}%). Глубокий анализ...")
+                    deep_analysis = await llm.analyze_order_deep(order.title, order.description, client_price=order.price)
+                    
                     await notifier.send_order_notification(
                         order,
                         relevance,
-                        cover_letter=cover_letter,
                         is_scam=is_scam,
-                        scam_reason=scam_reason
+                        scam_reason=scam_reason,
+                        deep_analysis=deep_analysis
                     )
 
         except Exception as e:

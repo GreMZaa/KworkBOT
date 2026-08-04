@@ -27,9 +27,14 @@ def get_bot() -> Bot | None:
     return _bot_instance
 
 
-def format_order_message(order: Order, relevance: int, cover_letter: str = "", is_scam: bool = False, scam_reason: str = "") -> str:
+def format_order_message(order: Order, relevance: int, deep_analysis: dict = None, is_scam: bool = False, scam_reason: str = "") -> str:
     """
-    Форматирует информацию о заказе, предупреждение антискам и ИИ-отклик для Telegram.
+    Форматирует расширенную информацию о заказе:
+    - Бюджет клиента vs Реальная рыночная цена
+    - Оценка сложности и время разработки
+    - ИИ-советы к переговорам
+    - ИИ-отклик для копирования в 1 клик
+    - Авто-хештеги
     """
     safe_title = html.escape(order.title)
     safe_url = html.escape(order.url)
@@ -45,14 +50,34 @@ def format_order_message(order: Order, relevance: int, cover_letter: str = "", i
     if is_scam:
         scam_header = f"⚠️ <b>ВНИМАНИЕ: ВОЗМОЖЕН СКАМ / МОШЕННИЧЕСТВО!</b>\n<i>({html.escape(scam_reason)})</i>\n\n"
 
+    # Данные глубокого ИИ-анализа
+    market_price = html.escape(deep_analysis.get("market_price", "Не определена") if deep_analysis else "3 000 — 5 000 руб.")
+    difficulty = html.escape(deep_analysis.get("difficulty", "Средняя") if deep_analysis else "Средняя")
+    estimated_time = html.escape(deep_analysis.get("estimated_time", "2-4 часа") if deep_analysis else "2-4 часа")
+    tech_stack = html.escape(deep_analysis.get("tech_stack", "Python") if deep_analysis else "Python")
+    ai_tip = html.escape(deep_analysis.get("ai_tip", "") if deep_analysis else "")
+    hashtags = html.escape(deep_analysis.get("hashtags", "#python #kwork") if deep_analysis else "#python #kwork")
+    cover_letter = deep_analysis.get("cover_letter", "") if deep_analysis else ""
+
     message = (
         f"{scam_header}"
         f"🎯 <b>Новый релевантный заказ! ({relevance}%)</b>\n\n"
         f"📌 <b>Источник:</b> {safe_source}\n"
         f"📝 <b>Заголовок:</b> <a href='{safe_url}'>{safe_title}</a>\n"
-        f"💰 <b>Бюджет:</b> {safe_price}\n"
-        f"⏱ <b>Срок:</b> {safe_deadline}\n"
+        f"💰 <b>Бюджет клиента:</b> {safe_price}\n"
+        f"💵 <b>Реальная рыночная цена:</b> <b>{market_price}</b> 💎\n"
+        f"⏱ <b>Срок заказчика:</b> {safe_deadline}\n"
         f"👤 <b>Заказчик:</b> {safe_client}\n\n"
+        f"🧠 <b>ИИ-Анализ задачи:</b>\n"
+        f"• <b>Сложность:</b> {difficulty}\n"
+        f"• <b>Ориентировочное время:</b> {estimated_time}\n"
+        f"• <b>Рекомендуемый стек:</b> <code>{tech_stack}</code>\n\n"
+    )
+
+    if ai_tip:
+        message += f"💡 <b>Совет к отклику:</b>\n<i>{ai_tip}</i>\n\n"
+
+    message += (
         f"📄 <b>Описание:</b>\n<i>{safe_description}</i>\n"
     )
 
@@ -63,7 +88,11 @@ def format_order_message(order: Order, relevance: int, cover_letter: str = "", i
             f"<code>{safe_cover_letter}</code>\n"
         )
 
-    message += f"\n🔗 <b>Прямая ссылка:</b> {safe_url}\n"
+    message += (
+        f"\n🔗 <b>Прямая ссылка:</b> {safe_url}\n\n"
+        f"{hashtags}"
+    )
+
     return message
 
 
@@ -81,9 +110,9 @@ def get_order_inline_keyboard(order: Order) -> InlineKeyboardMarkup:
     return keyboard
 
 
-async def send_order_notification(order: Order, relevance: int, cover_letter: str = "", is_scam: bool = False, scam_reason: str = "") -> bool:
+async def send_order_notification(order: Order, relevance: int, cover_letter: str = "", is_scam: bool = False, scam_reason: str = "", deep_analysis: dict = None) -> bool:
     """
-    Отправляет уведомление о заказе в Telegram.
+    Отправляет уведомление о заказе в Telegram с расширенной ИИ-аналитикой.
     """
     bot = get_bot()
     if not bot:
@@ -94,7 +123,7 @@ async def send_order_notification(order: Order, relevance: int, cover_letter: st
         logger.warning("TELEGRAM_CHAT_ID не задан. Уведомление не отправлено.")
         return False
 
-    text = format_order_message(order, relevance, cover_letter, is_scam, scam_reason)
+    text = format_order_message(order, relevance, deep_analysis=deep_analysis, is_scam=is_scam, scam_reason=scam_reason)
     reply_markup = get_order_inline_keyboard(order)
 
     try:

@@ -1,4 +1,5 @@
 import re
+import json
 import logging
 import aiohttp
 import config
@@ -28,10 +29,6 @@ SCAM_KEYWORDS = [
 def check_is_scam(order_title: str, order_description: str) -> tuple[bool, str]:
     """
     Проверяет заказ на признаки мошенничества (скама).
-
-    :param order_title: Название заказа
-    :param order_description: Описание заказа
-    :return: Кортеж (is_scam: bool, reason: str)
     """
     text_to_check = f"{order_title} {order_description}".lower()
 
@@ -109,27 +106,48 @@ async def evaluate_relevance(order_title: str, order_description: str) -> int:
         return 0
 
 
-async def generate_cover_letter(order_title: str, order_description: str) -> str:
+async def analyze_order_deep(order_title: str, order_description: str, client_price: str = "") -> dict:
     """
-    Генерирует продающее сопроводительное письмо (Cover Letter) для заказа на основе навыков фрилансера.
+    Выполняет глубокий ИИ-анализ заказа:
+    - Рыночная цена (не то что хочет клиент, а реальная стоимость разработки на рынке)
+    - Оценка сложности (Легкая / Средняя / Высокая)
+    - Ориентировочные часы работы
+    - Стек технологий
+    - ИИ-совет к отклику
+    - Хештеги
+    - Сопроводительное письмо
     """
+    default_result = {
+        "market_price": "3 000 — 5 000 руб.",
+        "difficulty": "Средняя",
+        "estimated_time": "2-4 часа",
+        "tech_stack": "Python, Web Scraping, SQLite",
+        "ai_tip": "Заказчик ищет быстрое решение. Подчеркните готовность сдать работу в сжатые сроки.",
+        "hashtags": "#python #freelance #kwork #development",
+        "cover_letter": "Здравствуйте! Готов качественно и в срок выполнить ваш заказ. Имею большой опыт разработки на Python и работы с API."
+    }
+
     if not config.COHERE_API_KEY:
-        return "Здравствуйте! Готов качественно и в срок выполнить ваш заказ. Занимаюсь разработкой на Python, веб-сервисов и ботов. Обращайтесь!"
+        return default_result
 
     skills = config.MY_SKILLS
-    prompt = f"""Ты — профессиональный фрилансер. Напиши короткий, убедительный и вежливый отклик (сопроводительное письмо) заказчику на проект.
+    prompt = f"""Ты — Senior IT-консультант и фрилансер. Сделай глубокий экспертный анализ заказа на разработку.
 
-Мои навыки: {skills}
+Навыки фрилансера: {skills}
+Заголовок заказа: {order_title}
+Описание заказа: {order_description}
+Бюджет заказчика: {client_price}
 
-Заказ:
-Заголовок: {order_title}
-Описание: {order_description}
-
-Требования к отклику:
-1. Максимально емкий (2-4 предложения).
-2. Покажи понимание задачи и подчеркни релевантный опыт.
-3. Без воды, клише и здоровайся уважительно.
-4. Напиши отклик на русском языке."""
+Сформируй ответ СТРОГО в формате валидного JSON-объекта без лишнего текста, без ```json:
+{{
+  "market_price": "РЕАЛЬНАЯ РЫНОЧНАЯ ЦЕНА на рынке фриланса (например: '3 000 — 5 000 руб.' или '15 000 — 25 000 руб.')",
+  "difficulty": "Сложность (выбери из: Легкая / Средняя / Высокая)",
+  "estimated_time": "Время разработки (например: '2-4 часа' или '1-2 дня')",
+  "tech_stack": "Рекомендуемый стек (например: 'Python, Aiogram 3, SQLite')",
+  "ai_tip": "1 короткий практический совет фрилансеру при отклике и обсуждении бюджета",
+  "hashtags": "4-5 релевантных хештегов через пробел в формате #python #telegram_bot #parsing",
+  "cover_letter": "Продающее сопроводительное письмо из 2-3 предложений"
+}}"""
 
     url = "https://api.cohere.com/v2/chat"
     headers = {
@@ -148,7 +166,7 @@ async def generate_cover_letter(order_title: str, order_description: str) -> str
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=payload, timeout=15) as response:
+            async with session.post(url, headers=headers, json=payload, timeout=20) as response:
                 if response.status == 200:
                     data = await response.json()
                     content = ""
@@ -159,9 +177,28 @@ async def generate_cover_letter(order_title: str, order_description: str) -> str
                     elif "text" in data:
                         content = data["text"]
 
-                    return content.strip()
+                    clean_json = content.strip()
+                    clean_json = re.sub(r'^```json\s*', '', clean_json)
+                    clean_json = re.sub(r'\s*```$', '', clean_json)
+
+                    parsed = json.loads(clean_json)
+                    return {
+                        "market_price": parsed.get("market_price", default_result["market_price"]),
+                        "difficulty": parsed.get("difficulty", default_result["difficulty"]),
+                        "estimated_time": parsed.get("estimated_time", default_result["estimated_time"]),
+                        "tech_stack": parsed.get("tech_stack", default_result["tech_stack"]),
+                        "ai_tip": parsed.get("ai_tip", default_result["ai_tip"]),
+                        "hashtags": parsed.get("hashtags", default_result["hashtags"]),
+                        "cover_letter": parsed.get("cover_letter", default_result["cover_letter"])
+                    }
                 else:
-                    return "Здравствуйте! Ознакомился с вашим заданием. Имею большой опыт разработки на Python и готов выполнить проект в сжатые сроки."
+                    return default_result
     except Exception as e:
-        logger.error(f"Ошибка при генерации отклика: {e}")
-        return "Здравствуйте! Готов взяться за реализацию вашего проекта. Опыт в разработке аналогичных решений имеется. Давайте обсудим детали!"
+        logger.error(f"Ошибка при глубоком анализе Cohere: {e}")
+        return default_result
+
+
+async def generate_cover_letter(order_title: str, order_description: str) -> str:
+    """Генерирует продающее сопроводительное письмо (совместимость со старым кодом)."""
+    deep_data = await analyze_order_deep(order_title, order_description)
+    return deep_data.get("cover_letter", "Здравствуйте! Готов качественно выпустить ваш проект.")
