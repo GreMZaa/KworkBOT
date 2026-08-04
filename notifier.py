@@ -63,6 +63,7 @@ def format_order_message(order: Order, relevance: int, cover_letter: str = "", i
             f"<code>{safe_cover_letter}</code>\n"
         )
 
+    message += f"\n🔗 <b>Прямая ссылка:</b> {safe_url}\n"
     return message
 
 
@@ -82,7 +83,7 @@ def get_order_inline_keyboard(order: Order) -> InlineKeyboardMarkup:
 
 async def send_order_notification(order: Order, relevance: int, cover_letter: str = "", is_scam: bool = False, scam_reason: str = "") -> bool:
     """
-    Отправляет уведомление о заказе в Telegram с отключенным превью для защиты от блокировок Cloudflare 403.
+    Отправляет уведомление о заказе в Telegram.
     """
     bot = get_bot()
     if not bot:
