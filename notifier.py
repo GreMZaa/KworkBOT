@@ -82,7 +82,7 @@ def get_order_inline_keyboard(order: Order) -> InlineKeyboardMarkup:
 
 async def send_order_notification(order: Order, relevance: int, cover_letter: str = "", is_scam: bool = False, scam_reason: str = "") -> bool:
     """
-    Отправляет уведомление о заказе в Telegram.
+    Отправляет уведомление о заказе в Telegram с отключенным превью для защиты от блокировок Cloudflare 403.
     """
     bot = get_bot()
     if not bot:
@@ -101,7 +101,7 @@ async def send_order_notification(order: Order, relevance: int, cover_letter: st
             chat_id=config.TELEGRAM_CHAT_ID,
             text=text,
             reply_markup=reply_markup,
-            disable_web_page_preview=False
+            disable_web_page_preview=True
         )
         logger.info(f"Уведомление о заказе '{order.title}' успешно отправлено в Telegram.")
         return True
