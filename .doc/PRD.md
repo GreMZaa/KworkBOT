@@ -102,7 +102,7 @@ class Exchange(ABC):
 | `TELEGRAM_BOT_TOKEN` | Токен Telegram-бота из BotFather | `123456789:ABCdefGhI...` |
 | `TELEGRAM_CHAT_ID` | ID чата/пользователя для уведомлений | `987654321` |
 | `COHERE_API_KEY` | Ключ доступа к Cohere API | `your_cohere_api_key_here` |
-| `COHERE_MODEL` | Название модели Cohere | `command-r-plus` |
+| `COHERE_MODEL` | Название модели Cohere | `command-r-08-2024` |
 | `MY_SKILLS` | Навыки пользователя для оценки | `Python, веб-разработка, React, ...` |
 | `RELEVANCE_THRESHOLD` | Минимальный процент релевантности для уведомлений | `70` |
 | `POLL_INTERVAL_SECONDS` | Интервал опроса бирж в секундах | `60` |
